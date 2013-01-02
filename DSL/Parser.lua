@@ -1,3 +1,11 @@
+--[[
+-- DSl.Parser
+The workhorse object of DSL.  The Parser generates a parser from LPEG based on the definitions given to its 
+parent DSL object.  Parser will annotate the basic patterns provided with extra structure according to the options 
+provided to the DSL object, which can be used to generate events during parsing and add extra information to the 
+resulting AST nodes.
+--]]
+
 local format = string.format
 
 local Nodes = require"DSL.Nodes"
@@ -21,12 +29,6 @@ local position = patterns.position
 local mark_position = patterns.mark_position
 local action = patterns.action
 local choice = patterns.choice
-
---[[
-local Nodes = require"DSL.Nodes"
-local Token = Nodes.Token
-local Rule = Nodes.Rule
---]]
 
 local datastructures = require"DSL.datastructures"
 local Stack = datastructures.Stack

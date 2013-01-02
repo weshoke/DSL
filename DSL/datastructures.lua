@@ -1,4 +1,7 @@
-
+--[[
+-- DSL.datastructures
+Basic datastructures used in DSL
+--]]
 ----------------------------------------------
 -- Stack
 local Stack = {}

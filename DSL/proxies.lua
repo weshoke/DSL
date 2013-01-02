@@ -1,3 +1,10 @@
+--[[
+-- DSl.proxies
+A set of proxies for LPEG functionality.  The proxies are needed so that transformations can be applied
+to the input DSL token and rule patterns.  Without the proxies, there would be no way to automatically insert 
+whitespace between tokens, etc.
+--]]
+
 local format = string.format
 local lpeg = require"listlpeg"
 

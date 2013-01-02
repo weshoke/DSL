@@ -1,3 +1,10 @@
+--[[
+-- DSL
+Top-level interface for DSL.  DSL maintains the basic information required to generate a Parser.
+It will generate any necessary structure that isn't Parser-specific such as the expression operators 
+if they exist.
+--]]
+
 local patterns = require"DSL.patterns"
 local Nodes = require"DSL.Nodes"
 local Parser = require"DSL.Parser"

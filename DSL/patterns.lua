@@ -1,3 +1,8 @@
+--[[
+-- DSl.patterns
+A collection of convenient LPEG patterns and pattern generating functions useful when writing DSLs.
+--]]
+
 local lpeg = require"listlpeg"
 local P, S, R = lpeg.P, lpeg.S, lpeg.R
 local C, V = lpeg.C, lpeg.V
