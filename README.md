@@ -58,5 +58,63 @@ While the above example works for binary operators, not all operators are binary
 
 Here, the unary op is marked as having arity 1 while the conditional\_op (C ternary operator) is marked at having arity 3.  Note that conditional\_op has an array of operators for its operator symbol.  This is due to the fact that the C ternary operator has two distinct characters.  Also not that the function\_call\_op names its rule as function\_call, telling DSL to use the function\_call rule instead of auto-generating one.
 
-### Special Rules
-In the process of generating the parser, DSL will create some special rules that can be referenced in the description of a language's grammar rules.  The *terminal* rule is the set of all tokens.  If operators rules are generated, the *expression* rule will be the top-level rule and is the entry point into parsing all of the operators. 
+### Annotations
+Annotations are additional properties attached to tokens and rules.  There are no restrictions on the properties that can be attached as long as their names don't conflict with existing fields.  The reserved fields are:
+
+* name = The name of the Token/Rule
+* patt = The LPEG pattern representing the Token/Rule
+
+In addition, there are certain fields that DSL looks for that, if defined, direct DSL to modify how it treats a particular token or rule.  For tokens, the fields are:
+
+* value = Mark this Token as a value to be included as a choice in the *values* Rule
+* keyword = Mark this Token as a value to be included as a choice in the *keyword* Rule
+
+For rules, the fields are:
+
+* collapsable = Remove this Rule from the AST if it only has one child node
+
+The *collapsable* field is very useful for simplifying an AST.  For example, all auto-generated operator rules have their collapsable property set to true.  As a result, even though an operator rule might be matched, it will only appear in the AST if it carries any semantic information (i.e. it has more than one child node).  If it doesn't, then it is removed from the AST and its sole child is set as a child of the parent rule.
+
+Aside from the annotations DSL understands, it may be useful to store data of some sort in a token or rule definition.  This is exactly what annotations are for.
+
+#### Special Rules
+In the process of generating the parser, DSL will create some special rules that can be referenced in the description of a language's grammar rules.  Special rules may or may not be defined depending on what information is input to DSL.  The special rules are:
+
+* values = The set of value Tokens if any are defined
+* keywords = The set of keyword Tokens if any are defined
+* expression = The top-level entry point rule into the chain of auto-generated operator rules
+
+### Parser
+DSL.Parser is the main workhorse of DSL.  It is the object that synthesizes a parser from the input data configured according to user settings.  A Parser can be created from a DSL object.  Every Parser must have a root rule defined, which is the top-level rule of the grammar.  It should be set to the name of a rule defined in the DSL.
+
+#### Settings
+Depending on how much diagnostic information you want back from the parser, there are a number of flags for modifying how a parser is generated.  This can be very handy when debugging a grammar, for example, since some of the flags will allow you to trace the path the parser takes through a grammar as it processes input strings.  The possible options are:
+
+* trace = Trace the Rules visited during parsing (default false)
+* token_trace = Trace the named Tokens visited during parsing (default false)
+* anonymous\_token\_trace = Trace the anonymous Tokens visited during parsing (default false)
+* comment_trace = Trace the comments visited during parsing (default false)
+* mark_position = Mark the start and end position of a Token in the input string and store the values in the Token nodes of the AST (default true)
+
+#### Events
+As a parser processes input strings, it can generate a number of events that can be handled via callbacks defined on the parser.  Events can be generated for comments, tokens, and rules depending on how the settings for the parser are configured.  For each class of event, if a callback function is defined, it will be called.  The callback functions are:
+
+* comment\_event(parser, event\_name, position, comment)
+* token\_event(parser, event\_name, token\_name, position)
+* rule\_event(parser, event\_name, rule\_name, position)
+
+The comment\_event callback will be called anytime a comment is encountered.  If the comment\_trace flag is set, it will also be called when an attempt to match a comment pattern occurs.  The token\_event callback will be called if the trace flag is set and a token is matched.  If trace\_token is set, it will also be called when an attempt to match a token pattern occurs.  If the anonymous\_token\_trace flag is set, it will also be called whenever an anonymous token match is attempted and matched.  The rule\_event callback will be called if the trace flag is set whenever an attempted match, successful match, or failed match occurs.
+
+### Error Handling
+One task of a good language parser is to provide useful error messages when parsing fails.  Some errors depend on semantic information, so they can't be directly embedded in the grammar, but others are syntactic and can be embedded.  Furthermore, syntactic information about where parsing failed can help in diagnosing semantic errors.  DSL has a function called *Assert* than can be used to assert that a particular pattern matches if the parser reaches that point.  If parsing happens to fail, then a provided error string can be used to generate an error message for the user. Assert has the following signature:
+
+	Assert(patt, msg)
+	
+It's usage looks like:
+
+	expression_statement =  assignment_expression * Assert(T";", "expression_statement.SEMICOLON")
+
+Here, we assert that if an expression\_statement is matched up through assignment\_expression that a semicolon must follow.  If not, an error messaging noting the location of the error and the message "expression_statement.SEMICOLON" is thrown.
+
+### Limitations
+DSL uses proxies to manipulate LPEG.  Since Lua 5.1 doesn't support metamethods for the # operator on tables, the LPEG operator #patt, will not work in DSL.  Instead, use the function Ignore, which is functionally equivalent.
