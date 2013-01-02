@@ -97,6 +97,9 @@ local dsl = DSL{
 		TRUE = { value=true },
 		FALSE = { value=true },
 		NULL = { value=true },
+		-- rule annotations
+		value = { collapsable=true },
+		values = { collapsable=true },
 	},
 }
 local parser = dsl:parser{

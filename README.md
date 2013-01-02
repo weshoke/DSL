@@ -120,5 +120,29 @@ It's usage looks like:
 
 Here, we assert that if an expression\_statement is matched up through assignment\_expression that a semicolon must follow.  If not, an error messaging noting the location of the error and the message "expression_statement.SEMICOLON" is thrown.
 
+### AST Nodes
+The output of a DSL parser is an Abstract Syntax Tree.  The nodes in the AST correspond to matched rules and tokens with tokens as the leaf nodes.  For every rule matched, a node is added to the AST where the rule field is set to the name of the rule matched and the list of child nodes ordered in the array portion of the node.  If a rule is marked as collapsable, it will not appear in the AST if it only has one child node.
+
+Token nodes have the token field set with the name of the token and the value of the token in the first position of the array portion of the node.  Tokens can only have one value, so they are always arrays of length one.  As an example output, below is some JSON code and its resulting AST:
+
+	{
+		"x" : "yyy"
+	}
+
+	AST = {
+	    rule = "object",
+	    [1] = {
+	        rule = "entry",
+	        [1] = {
+	            token = "STRING",
+	            [1] = "\"x\"",
+	        },
+	        [2] = {
+	            token = "STRING",
+	            [1] = "\"yyy\"",
+	        },
+	    },
+	},
+
 ### Limitations
 DSL uses proxies to manipulate LPEG.  Since Lua 5.1 doesn't support metamethods for the # operator on tables, the LPEG operator #patt, will not work in DSL.  Instead, use the function Ignore, which is functionally equivalent.
