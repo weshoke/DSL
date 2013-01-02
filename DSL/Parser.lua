@@ -8,10 +8,10 @@ resulting AST nodes.
 
 local format = string.format
 
-local Nodes = require"DSL.Nodes"
-
+local debug = require"debug"
 local peg = require"lpeg"
 
+local Nodes = require"DSL.Nodes"
 local lpeg = require"DSL.proxies"
 local P, S, R = lpeg.P, lpeg.S, lpeg.R
 local C, V = lpeg.C, lpeg.V
@@ -59,7 +59,17 @@ setmetatable(M, {
 local token_env = table_derive({P=P, S=S, R=R, C=C}, patterns)
 token_env.__index = token_env
 function M:eval_tokens(code)
-	local env = setmetatable({}, token_env)
+	local env_meta
+	env_meta = {
+		Assert = function(...)
+			return self:err(...)
+		end,
+		__index = function(t, k)
+			return env_meta[k] or peg.V(k)
+		end,
+	}
+
+	local env = setmetatable({}, table_derive(env_meta, token_env))
 	setfenv(loadstring(code), env)()
 	for name, patt in pairs(env) do
 		local tok = T{

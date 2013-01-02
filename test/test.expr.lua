@@ -72,7 +72,7 @@ addmodulepath(script.path.."/..")
 
 --[[
 TODO:
-	- fast lookahead to terminals (requires implementation of #)
+	- fast lookahead to terminals
 	- customized terminals or expression
 	- integrating annotations into syntax?
 	- AST -> string
@@ -86,9 +86,8 @@ local nl = utils.nl
 
 local dsl = DSL{
 	tokens = [=[
+		IDENTIFIER = idchar * (idchar+digit)^0 - keywords
 		NUMBER = float+integer
-		IDENTIFIER = idchar * (idchar+digit)^0
-		--IDENTIFIER = idchar * (idchar+digit)^0 - keyword
 		BREAK = P"break"
 		CONTINUE = P"continue"
 		RETURN = P"return"

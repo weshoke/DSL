@@ -84,6 +84,10 @@ In the process of generating the parser, DSL will create some special rules that
 * keywords = The set of keyword Tokens if any are defined
 * expression = The top-level entry point rule into the chain of auto-generated operator rules
 
+Below is an example of using the keywords special rule to exclude certain names from being defined as an IDENTIFIER token:
+
+	IDENTIFIER = idchar * (idchar+digit)^0 - keywords
+
 ### Parser
 DSL.Parser is the main workhorse of DSL.  It is the object that synthesizes a parser from the input data configured according to user settings.  A Parser can be created from a DSL object.  Every Parser must have a root rule defined, which is the top-level rule of the grammar.  It should be set to the name of a rule defined in the DSL.
 
