@@ -10,7 +10,7 @@ local format = string.format
 
 local Nodes = require"DSL.Nodes"
 
-local peg = require"listlpeg"
+local peg = require"lpeg"
 
 local lpeg = require"DSL.proxies"
 local P, S, R = lpeg.P, lpeg.S, lpeg.R
@@ -62,10 +62,11 @@ function M:eval_tokens(code)
 	local env = setmetatable({}, token_env)
 	setfenv(loadstring(code), env)()
 	for name, patt in pairs(env) do
-		env[name] = T{
+		local tok = T{
 			name = name,
 			patt = patt,
 		}
+		env[name] = tok
 	end
 	return env
 end
@@ -146,17 +147,13 @@ end
 
 function M:eval()
 	local dsl = self.dsl
-	self:create_tokens(dsl.tokens.."\n"..(dsl.optokens or ""))
 	
 	self.rules = {}
-	self:create_rules(format("terminals = %s", table.concat(keys(self.tokens), "+")))
-	dsl.annotations.terminals = { collapsable=true }
-	self:create_rules(dsl.rules)
-	if(dsl.oprules) then
-		self:create_rules(dsl.oprules)
-	end
-	self:create_comments(dsl.comments)
-
+	self:create_tokens(dsl.tokens.."\n"..(dsl.optokens or ""))
+	
+	
+	local values = {}
+	local keywords = {}
 	for k, v in pairs(self.tokens) do
 		self.tokens[k] = v:eval{
 			Token = function(v)
@@ -164,6 +161,9 @@ function M:eval()
 					v.patt = v.patt:eval()
 				end
 				local tok = Nodes.Token(v)
+				if(self.dsl.annotations[k]) then
+					tok = table_derive(tok, self.dsl.annotations[k])
+				end
 				
 				local patt = tok.patt
 				-- set the token field of the AST node
@@ -190,10 +190,36 @@ function M:eval()
 				end
 				tok.patt = patt
 				
+				if(tok.value) then
+					values[#values+1] = k
+				end
+				if(tok.keyword) then
+					keywords[#keywords+1] = k
+				end
+				
 				return tok
 			end,
 		}
 	end
+	
+	local special_rules
+	if(#values >= 1) then
+		special_rules = format("values = %s", table.concat(values, "+"))
+	end
+	if(#keywords >= 1) then
+		special_rules = (special_rules or "")..format("\nkeywords = %s", table.concat(keywords, "+"))
+	end
+
+	if(special_rules) then
+		self:create_rules(special_rules)
+	end
+	dsl.annotations.terminals = { collapsable=true }
+	self:create_rules(dsl.rules)
+	if(dsl.oprules) then
+		assert(self.rules.values, "No value tokens provided, which is required to generate operator rules")
+		self:create_rules(dsl.oprules)
+	end
+	self:create_comments(dsl.comments)
 	
 	local ignore = whitespace
 	if(self.comments) then

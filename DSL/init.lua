@@ -5,6 +5,7 @@ It will generate any necessary structure that isn't Parser-specific such as the 
 if they exist.
 --]]
 
+local format = string.format
 local patterns = require"DSL.patterns"
 local Nodes = require"DSL.Nodes"
 local Parser = require"DSL.Parser"
@@ -12,13 +13,6 @@ local Parser = require"DSL.Parser"
 local utils = require"DSL.utilities"
 local table_format = utils.table_format
 local remap = utils.remap
-
-local format = string.format
-local lpeg = require"listlpeg"
-local P, S, R = lpeg.P, lpeg.S, lpeg.R
-local C, V = lpeg.C, lpeg.V
-local Ct, Cg, Cc = lpeg.Ct, lpeg.Cg, lpeg.Cc
-local Cmt = lpeg.Cmt
 
 local uid = (function()
 	local id = 1
@@ -108,7 +102,7 @@ end
 function M:create_ops(list)
 	local op1 = list[1]
 	local optokens = {}
-	local rules = { self:op(op1, "terminals", optokens) }
+	local rules = { self:op(op1, "values", optokens) }
 	self.annotations[op1.name] = { collapsable=true }
 	for i=2, #list do
 		local prevop = list[i-1]

@@ -1,5 +1,5 @@
 local format = string.format
-local lpeg = require"listlpeg"
+local lpeg = require"lpeg"
 local P, S, R = lpeg.P, lpeg.S, lpeg.R
 local C, V = lpeg.C, lpeg.V
 local Ct, Cg, Cc = lpeg.Ct, lpeg.Cg, lpeg.Cc

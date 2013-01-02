@@ -6,7 +6,7 @@ whitespace between tokens, etc.
 --]]
 
 local format = string.format
-local lpeg = require"listlpeg"
+local lpeg = require"lpeg"
 
 local Proxy
 local function nilop(op)
@@ -119,6 +119,7 @@ local opcodes = {
 	mul = function(v1, v2) return v1*v2 end,
 	div = function(v1, v2) return v1/v2 end,
 	pow = function(v1, v2) return v1^v2 end,
+	Ignore = function(v) return #v end,
 }
 
 function Proxy:eval(handlers)
@@ -154,6 +155,7 @@ return {
 	Cs = unop"Cs",
 	Ct = unop"Ct",
 	Cmt = binop"Cmt",
+	Ignore = unop"#",
 	Comment = unop"Comment",
 	Token = Token,
 	T = Token,
