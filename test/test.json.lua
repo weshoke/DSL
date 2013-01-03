@@ -114,7 +114,7 @@ local parser = dsl:parser{
 
 local code = [[
 {
-	"x" : "yyy"
+	"x" : ["yyy"]
 }
 ]]
 
@@ -123,6 +123,7 @@ local ok, ast = pcall(parser.parse, parser, code)
 print""
 if(ok and ast) then
 	printt(ast, "AST")
+	--print( parser:print(ast) )
 else
 	print(ast)
 	printt(parser.errors, "Errors")
