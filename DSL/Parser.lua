@@ -33,6 +33,9 @@ local choice = patterns.choice
 local datastructures = require"DSL.datastructures"
 local Stack = datastructures.Stack
 
+local WAST = require"DSL.walker.AST"
+local WProxy = require"DSL.walker.Proxy"
+
 local utils = require"DSL.utilities"
 local  table_derive = utils.table_derive
 local table_format = utils.table_format
@@ -391,131 +394,34 @@ local function indent(lvl)
 	return string.rep("  ", lvl or 1)
 end
 
---[==[
--- EXPERIMENTAL
-function M:print(AST)
-	if(not self.patt) then
-		self:eval()
-	end
-	
-	local tokenize
-	local dispatch
-	local ops = {
-		Token = function(proxy, node, list, j, lvl)
-			print(indent(lvl)..format("Token: %s", proxy[1]))
-			list[#list+1] = proxy[1]
-			return j
-		end,
-		
-		V = function(proxy, node, list, j, lvl)
-			local name = proxy[1]
-			local child = node[j]
-			if(child.token) then
-				print(indent(lvl)..format("V: Named Token: %s:%s", name, child[1]))
-				list[#list+1] = child[1]
-				j = j+1
-			else
-				local child = node[j]
-				local nodename = child.rule
-				print(indent(lvl)..format("V: Named Rule: %s == %s", name, nodename))
-				
-				local annotations = self.dsl.annotations[name]
-				print(name, annotations and annotations.collapsable)
-				if(
-					annotations and annotations.collapsable and 
-					name ~= nodename
-				) then
-					local proxyrule = assert(self.rule_definitions[name])
-					print("XXXXXXXXXXXXXXXXXX", proxyrule)
-					j = dispatch(proxyrule, node, list, j, lvl)
-				elseif(name == nodename) then
-					local childproxy = assert(self.rule_definitions[name])
-					print(indent(lvl)..tostring(childproxy))
-					local _, endj = tokenize(childproxy, child, list, 1, lvl)
-					if(endj > #child) then
-						j = j+1
-					end
-				end
-			end
-			return j
-		end,
-	
-		add = function(proxy, node, list, j, lvl)
-			local v1 = proxy[1]
-			local v2 = proxy[2]
-			print(indent(lvl)..format("starting add op: %d", j), proxy)
-			if(type(v1) == "table") then
-				local nextj = dispatch(v1, node, list, j, lvl)
-				if(nextj > j) then
-					j = nextj
-				elseif(type(v2) == "table") then
-					j = dispatch(v2, node, list, j, lvl)
-				end
-			end
-			print(indent(lvl)..format("ending add op: %d", j))
-			return j
-		end,
-	
-		mul = function(proxy, node, list, j, lvl)
-			local _
-			print(indent(lvl)..format("starting mul op: %d", j))
-			--j = tokenize(proxy[1], node, list, j, lvl+1)
-			j = dispatch(proxy[1], node, list, j, lvl+1)
-			j = dispatch(proxy[2], node, list, j, lvl+1)
-			print(indent(lvl)..format("ending mul op: %d", j))
-			return j
-		end,
-	
-		pow = function(proxy, node, list, j, lvl)
-			local v = proxy[1]
-			local n = proxy[2]
-			print(indent(lvl).."POW:", n)
-			if(n == -1) then
-				j = dispatch(v, node, list, j, lvl)
-			else
-			
-			end
-			print(indent(lvl).."POW:", n, j)
-			return j
-		end,
-		
-	}
-	dispatch = function(proxy, ...)
-		return assert(ops[proxy.op])(proxy, ...)
-	end
-	
-	tokenize = function(proxy, node, list, j, lvl)
-		if(not list) then
-			print("Starting Tokenize:", proxy, node.rule)
-		end
-		list = list or {}
-		j = j or 1
-		lvl = lvl or 1
-		local indent = string.rep("  ", lvl)
-		
-		for i=1, #proxy do
-			print(indent.."Starting Loop:", lvl, i, j)
-			local v = proxy[i]
-			if(j > #node) then
-				break
-			end
-			j = dispatch(proxy, node, list, j, lvl)
-		end
-		
-		return table.concat(list, " "), j
-	end
-	
-	local function walk(node)
-		if(node.rule) then
-			local rule = assert(self.rule_definitions[node.rule])
-			local res = tokenize(rule, node)
-			return res
-		else
-			return node[1]
-		end
-	end
-	return walk(AST)
+function M:def(name)
+	return assert(self.rule_definitions[name])
 end
---]==]
+
+function M:istoken(name)
+	return not self.rule_definitions[name]
+end
+
+function M:property(name, k)
+	local annotation = self.dsl.annotations[name]
+	if(annotation) then
+		return annotation[k]
+	end
+end
+
+function M:print(AST)
+	local wast = WAST{ ast=AST }
+	local wproxy = WProxy{
+		wast = wast,
+		parser = self,
+	}
+	local tokens = {}
+	print(wproxy:match(tokens))
+
+	print(wproxy.wcode)
+	print(wproxy.wcode:format{
+		array = "%s%s(%s %s)^0%s"
+	})
+end
 
 return M
