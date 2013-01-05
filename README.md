@@ -12,6 +12,7 @@ DSL is a language generator.  Given a set of token patterns and grammar rules de
 * error annotations on grammar rule patterns for throwing syntactical errors
 * auto-generation of expression operators such as *, /, +, etc.
 * automatic whitespace handling
+* Code -> AST -> Code with pretty printing round trip
 * one-pass parsing of input string
 * new Token primitive 'T' as an extension of the LPEG 'P' pattern for writing grammar rules
 
