@@ -115,13 +115,10 @@ local parser = dsl:parser{
 
 local code = [[
 {
-	"SDFSDF" : {
-		"a" : 123.234
-	},
-	"XXXXXXX" : [1, 2, 3, 4]
-	,
-	
-	"a" : "v"
+	"list" : [1, 2, 3],
+	"vec3" : {
+		"x": 1, "y": 0, "z": 0.5
+	}
 }
 ]]
 
@@ -139,7 +136,7 @@ local function printnode(node, depth)
 end
 
 local fmts = {
-	array = "[%s(, %s)^0]",
+	array = "[(%s(, %s)^0)^-1]",
 	entry = "%s: %s",
 	object = [[
 {(
@@ -150,7 +147,7 @@ local fmts = {
 
 print""
 if(ok and ast) then
-	--printt(ast, "AST")
+	printt(ast, "AST")
 	print( parser:print(ast, fmts) )
 else
 	print(ast)
