@@ -1,3 +1,10 @@
+--[[
+-- DSL.walker.AST
+A cursor over the AST.  It navigates incrementally with next() and prev() methods.  As it navigates, 
+it visits each rule and token in the AST.  The cursor keeps track of the node name and position within 
+that node.  When it's at position 0, it's on the node itself.  All other positions are on a child node 
+within the rule.  If the poition is null, the cursor is either off the end or beginning of the AST.
+--]]
 local format = string.format
 local datastructures = require"DSL.datastructures"
 local Stack = datastructures.Stack
@@ -53,6 +60,8 @@ function M:prev()
 	return self:current()
 end
 
+-- check to see if the prev() method will 
+-- cause a push down the AST hierarchy
 function M:prev_will_push()
 	local node = self:current()
 	if(node) then
@@ -90,6 +99,8 @@ function M:next()
 	return self:current()
 end
 
+-- check to see if the next() method will 
+-- cause a pop up the AST hierarchy
 function M:next_will_pop(onlyrule)
 	local node = self:current()
 	if(node) then
@@ -172,6 +183,8 @@ function M:depth()
 	return #self.nodestack
 end
 
+-- listener's must implement an event(event_name) method
+-- events names are: "next", "prev", "push", and "pop"
 function M:register(o)
 	self.listener = o
 end

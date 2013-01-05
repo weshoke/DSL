@@ -1,3 +1,11 @@
+--[[
+-- DSL.walker.Proxy
+A cursor over the Proxy grammar rules of the Parser.  Proxy stitches together the network 
+of rules, matching them with an AST using DSL.walker.AST and outputting the result in a 
+codeast as created by DSL.walker.Code.  The resulting codeast can be used to synthesize 
+a codestring.  Proxy naviages the rules defined in a Parser, extracting anonymous tokens and 
+interleaving them with named tokens from an AST.
+--]]
 local WCode = require"DSL.walker.Code"
 
 local datastructures = require"DSL.datastructures"
@@ -9,7 +17,6 @@ local DBG = false
 local M = {}
 M.__index = M
 
-local LEVEL = 0
 local function dbgprint(loc, str, ...)
 	if(DBG) then
 		local res = {...}
@@ -22,28 +29,26 @@ local function dbgprint(loc, str, ...)
 	end
 end
 
+-- v1 + v2
 function M:add(proxy)
-	dbgprint(self.wast:locstring(), "add 1", proxy[1])
 	local ok = self:dispatch(proxy[1])
 	if(not ok) then
-		dbgprint(self.wast:locstring(), "add 2", proxy[2])
 		ok = self:dispatch(proxy[2])
 	end
 	return ok
 end
 
+-- v1 * v2
 function M:mul(proxy)
-	dbgprint(self.wast:locstring(), "mul 1", proxy[1])
 	local ok = self:dispatch(proxy[1])
 	if(ok) then
-		dbgprint(self.wast:locstring(), "mul 2", proxy[2])
 		ok = self:dispatch(proxy[2])
 	end
 	return ok
 end
 
+-- v1 ^ N
 function M:pow(proxy)
-	dbgprint(self.wast:locstring(), "pow", proxy)
 	local n = proxy[2]
 	
 	if(not self.wast:current() and n <= 0) then
@@ -51,77 +56,41 @@ function M:pow(proxy)
 	end
 	
 	if(n == -1) then
-		local TEST = self.wcode:loc()
+		local codeloc = self.wcode:loc()
 		local ok = self:dispatch(proxy[1])
-		dbgprint(self.wast:locstring(), "POW:", ok, n)
-		
-		--print"xxxxxxxxxxxxxxxxxxxxxxxx"
 		if(not ok) then
-			--self:remove_tokens(loc)
-			dbgprint(self.wast:locstring(), "POW "..tostring(proxy[1]), self.wast:locstring())
-			
-			--print(self.wcode)
-			
-			--print("REMOVE:", self.wcode:locstring(TEST), self.wcode:locstring())
-			self.wcode:rewind(TEST)
-			
-			--print(self.wcode)
-			
-			--self.wast:next()
+			self.wcode:rewind(codeloc)
 		end
-		
 		return true
 	elseif(n == 0) then
-		--print"--------------------------"
 		local loc = self.wast:loc()
-		local TEST = self.wcode:loc()
-		dbgprint(self.wcode:locstring(TEST), "xx", unpack(TEST.codenode))
+		local codeloc = self.wcode:loc()
 		local ok = self:dispatch(proxy[1])
-		---[[
 		while(ok) do
-			--print"**********************"
-			--print(self.wast:locstring())
-			TEST = self.wcode:loc()
+			codeloc = self.wcode:loc()
 			ok = self:dispatch(proxy[1])
 		end
-		--]]
-		
-		dbgprint(self.wast:locstring(), "POW:", ok, n)
 		if(not ok) then
-			--self:remove_tokens(loc)
-			dbgprint(self.wast:locstring(), "POW "..tostring(proxy[1]), self.wast:locstring())
-			
-			--print(self.wcode)
-			
-			--print("REMOVE:", self.wcode:locstring(TEST), self.wcode:locstring())
-			self.wcode:rewind(TEST)
-			
-			--print(self.wcode)
+			self.wcode:rewind(codeloc)
 		end
 		return true
+	else
+		error"TODO"
 	end
 end
 
 function M:V(proxy)
-	local name = proxy[1]
-	
+	-- early bail
 	if(self.wast:next_will_pop(true)) then
-		dbgprint(self.wast:locstring(), proxy, "BAIL early to avoid pop")
 		return false
 	end
+	
 	
 	self.wast:next()
-	dbgprint(self.wast:locstring(), proxy)
-	if(self.wast:finished()) then
-		--[[
-		print("FINISHED")
-		self.wast:prev()
-		return false
-		--]]
-	end
 	
 	local collapsed = false
 	local res = false
+	local name = proxy[1]
 	if(self.parser:istoken(name)) then
 		if(self.wast:isrule()) then
 			error""
@@ -137,72 +106,38 @@ function M:V(proxy)
 		local rulename = self.wast:rulename()
 		if(name == rulename) then
 			self.proxystack:push(newproxy)
-
-			local ok = self:dispatch(newproxy)
+			res = self:dispatch(newproxy)
 			self.proxystack:pop()
-			if(not ok) then
-				print"***************"
-				res = false
-			else
-				res = true
-			end
 		else
+			-- try to collapse the node
 			if(self.parser:property(name, "collapsable")) then
 				collapsed = true
 				self.wast:prev()
-				self.proxystack:push(newproxy)
-
-				local ok = self:dispatch(newproxy)
-				self.proxystack:pop()
 				
-				if(not ok) then
-					res = false
-				else
-					res = true
-				end
+				self.proxystack:push(newproxy)
+				res = self:dispatch(newproxy)
+				self.proxystack:pop()
 			else
 				res = false
 			end
 		end
 	end
 	
-	--print(collapsed, res)
 	if(not collapsed) then
 		if(not res) then
-			dbgprint(self.wast:locstring(), "self.wast:prev_will_push()", self.wast:prev_will_push())
 			if(not self.wast:prev_will_push()) then
 				self.wast:prev()
 			end
-			dbgprint(self.wast:locstring(), "No Collapse No Match")
 		elseif(res) then
-			if(not self.parser:istoken(name)) 
-				then dbgprint(self.wast:locstring(), "Matched RULE:", proxy, self.parser:def(name))
-				else dbgprint(self.wast:locstring(), "Matched TOKEN:", proxy, name)
-			end
 			self.wast:next()
 		end
-	elseif(res) then
-		dbgprint(self.wast:locstring(), "Matched Collaped Rule:", proxy, self.parser:def(name))
 	end
---	print("XX", res, self.wast:nodestring())
 	return res
 end
 
 function M:Token(proxy)
-	dbgprint(self.wast:locstring(), "Token", proxy)
 	self:append_token(proxy[1])
 	return true
-end
-
-function M:remove_tokens(loc)
-	--[[
-	local tok = self.tokenlist[#self.tokenlist]
-	dbgprint(self.wast:locstring(), "REMOVE TOKENS:", self.wast:locstring(loc))
-	while(tok.node ~= loc.node and tok.idx ~= loc.idx) do
-		self.tokenlist[#self.tokenlist] = nil
-		tok = self.tokenlist[#self.tokenlist]
-	end
-	--]]
 end
 
 function M:append_token(tok)
@@ -210,19 +145,15 @@ function M:append_token(tok)
 end
 
 function M:dispatch(proxy)
-	LEVEL = LEVEL+1
 	local res
 	if(type(proxy) == "table") 
 		then res = self[proxy.op](self, proxy)
 		else res = false
 	end
-	LEVEL = LEVEL-1
 	return res
 end
 
 function M:match(tokens)
-	LEVEL = 0
-	dbgprint(self.wast:locstring(), "AST:", self.proxy)
 	self:dispatch(self.proxy)
 end
 

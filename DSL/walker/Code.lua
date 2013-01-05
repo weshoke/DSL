@@ -1,3 +1,10 @@
+--[[
+-- DSL.walker.Code
+The code walker reconstructs AST nodes into their full syntactical representation.  In mirrors the AST tree with each tree node storing an AST tree node along with the list of child nodes and tokens (including anonymous tokens) written into it.
+
+The format method synthesizes final code output once all of the AST tokens have been inserted.
+--]]
+
 local format = string.format
 local datastructures = require"DSL.datastructures"
 local Stack = datastructures.Stack
@@ -5,17 +12,7 @@ local Stack = datastructures.Stack
 local utils = require"DSL.utilities"
 local printt = utils.printt
 
-local lpeg = require"lpeg"
-local P, S, R = lpeg.P, lpeg.S, lpeg.R
-local C, V = lpeg.C, lpeg.V
-local Ct, Cg, Cc = lpeg.Ct, lpeg.Cg, lpeg.Cc
-local Cp, Cmt = lpeg.Cp, lpeg.Cmt
-local Cb = lpeg.Cb
-
-local patterns = require"dsl.patterns"
-local space = patterns.space
-local whitespace = patterns.whitespace
-local integer = patterns.integer
+local template = require"DSL.template"
 
 local WTem = require"DSL.walker.Template"
 local WFmt = require"DSL.walker.Format"
@@ -33,14 +30,12 @@ function M:push(node)
 		then codenode = self.codeast
 		else codenode = { node=node }
 	end
-	--print("->push:", codenode_name(codenode))
 	self:child(codenode)
 	self.nodestack:push(codenode)
 end
 
 function M:pop()
 	local codenode = self:current()
-	--print("<-pop:", codenode_name(codenode))
 	self.nodestack:pop()
 	if(#codenode == 0) then
 		self:remove_child()
@@ -69,13 +64,12 @@ function M:rewind(loc)
 	end
 end
 
+-- events from DSL.walker.AST
 function M:event(e)
 	if(e == "push") then
 		self:push(self.wast:current())
 	elseif(e == "pop") then
 		self:pop()
-	elseif(e == "next") then
-	elseif(e == "prev") then
 	end
 end
 
@@ -137,66 +131,11 @@ local function codeast_string(codeast, lvl, dbg)
 	return table.concat(res, "\n")
 end
 
-local N = Cg(C(integer)/tonumber, "n")
-local SYM = C(P"%s")
-local space = P" \t"
-local NL = C("\n\r")
-local SEP = C(space^0) / function(v)
-	if(#v > 0) then
-		return v
-	end
-end
-local SPACE = NL^1 + SEP
-local TOK = (
-	P"%" * C(S"()") +
-	C((1-space-V"SYM" - P")" - P"("))
-)^1
-
-local values = V"SYM" + V"TOK"
-local item = V"SPACE" * V"values"
-local primary = V"item" + P"(" * V"SPACE" * V"sequence" * V"SPACE" * P")"
-local rep = Ct(V"primary" * (P"^" * V"N")^0) / function(t)
-	if(#t == 1) then
-		return t[1]
-	else 
-		if(not t.n) then
-			return unpack(t)
-		else
-			return t
-		end
-	end
-end
-local sequence = (V"rep" * V"SPACE")^1
-local fmt = V"SPACE" * V"sequence" * V"SPACE"
-local unit = Ct(V"fmt")
-
-local FMT = P{
-	[1] = "unit",
-	unit = unit,
-	fmt = fmt,
-	sequence = sequence,
-	fmt = fmt,
-	rep = rep,
-	primary = primary,
-	item = item,
-	values = values,
-	TOK = TOK,
-	SPACE = SPACE,
-	SEP = SEP,
-	NL = NL,
-	SYM = SYM,
-	N = N,
-}*P(-1)
-
 local codeast_format
 local function synthesize(codeast, fmts)
 	local fmt = fmts[codeast.node.rule]
-	local ops = FMT:match(fmt)
+	local ops = template.parse(fmt)
 	
-	--print"****************************"
-	--print(fmt)
-	--printt(ops)
-
 	local wfmt = WFmt{
 		ops = ops,
 		wtem = WTem{ codeast=codeast },
