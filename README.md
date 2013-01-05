@@ -260,7 +260,7 @@ For rules with a repeated pattern of elements, the ^N notation found in LPEG app
 	
 which can produce results like:
 
-	name(arg1, arg2)
+	name( arg1, arg2 )
 
 
 ### Limitations
