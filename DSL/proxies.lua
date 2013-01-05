@@ -155,7 +155,7 @@ return {
 	Cs = unop"Cs",
 	Ct = unop"Ct",
 	Cmt = binop"Cmt",
-	Ignore = unop"#",
+	Ignore = unop"Ignore",
 	Comment = unop"Comment",
 	Token = Token,
 	T = Token,
