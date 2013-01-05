@@ -409,19 +409,15 @@ function M:property(name, k)
 	end
 end
 
-function M:print(AST)
+function M:print(AST, fmts)
 	local wast = WAST{ ast=AST }
 	local wproxy = WProxy{
 		wast = wast,
 		parser = self,
 	}
 	local tokens = {}
-	print(wproxy:match(tokens))
-
-	print(wproxy.wcode)
-	print(wproxy.wcode:format{
-		array = "%s%s(%s %s)^0%s"
-	})
+	wproxy:match(tokens)
+	return wproxy.wcode:format(fmts)
 end
 
 return M

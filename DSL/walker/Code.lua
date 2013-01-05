@@ -17,6 +17,9 @@ local space = patterns.space
 local whitespace = patterns.whitespace
 local integer = patterns.integer
 
+local WTem = require"DSL.walker.Template"
+local WFmt = require"DSL.walker.Format"
+
 local M = {}
 M.__index = M
 
@@ -30,12 +33,14 @@ function M:push(node)
 		then codenode = self.codeast
 		else codenode = { node=node }
 	end
+	--print("->push:", codenode_name(codenode))
 	self:child(codenode)
 	self.nodestack:push(codenode)
 end
 
 function M:pop()
 	local codenode = self:current()
+	--print("<-pop:", codenode_name(codenode))
 	self.nodestack:pop()
 	if(#codenode == 0) then
 		self:remove_child()
@@ -132,159 +137,74 @@ local function codeast_string(codeast, lvl, dbg)
 	return table.concat(res, "\n")
 end
 
+local N = Cg(C(integer)/tonumber, "n")
 local SYM = C(P"%s")
-local SEP = C(whitespace)
-local TOK = C((1-space-V"SYM"-P"_)" - P"_(")^1)
-local group = P"_(" * V"SEP" * V"val" * (V"SEP" * V"val")^0 * P"_)"
-local val = V"group" + V"SYM" + V"TOK"
-local rep = Ct(V"val" * P"^" * Cg(C(integer)/tonumber, "n"))
-local fmt = Ct(V"SEP" * ((V"rep" + V"val") * V"SEP")^1 * V"SEP")
+local space = P" \t"
+local NL = C("\n\r")
+local SEP = C(space^0) / function(v)
+	if(#v > 0) then
+		return v
+	end
+end
+local SPACE = NL^1 + SEP
+local TOK = (
+	P"%" * C(S"()") +
+	C((1-space-V"SYM" - P")" - P"("))
+)^1
+
+local values = V"SYM" + V"TOK"
+local item = V"SPACE" * V"values"
+local primary = V"item" + P"(" * V"SPACE" * V"sequence" * V"SPACE" * P")"
+local rep = Ct(V"primary" * (P"^" * V"N")^0) / function(t)
+	if(#t == 1) then
+		return t[1]
+	else 
+		if(not t.n) then
+			return unpack(t)
+		else
+			return t
+		end
+	end
+end
+local sequence = (V"rep" * V"SPACE")^1
+local fmt = V"SPACE" * V"sequence" * V"SPACE"
+local unit = Ct(V"fmt")
 
 local FMT = P{
-	[1] = "fmt",
+	[1] = "unit",
+	unit = unit,
+	fmt = fmt,
+	sequence = sequence,
 	fmt = fmt,
 	rep = rep,
-	val = val,
-	group = group,
-	text = text,
+	primary = primary,
+	item = item,
+	values = values,
 	TOK = TOK,
+	SPACE = SPACE,
 	SEP = SEP,
+	NL = NL,
 	SYM = SYM,
+	N = N,
 }*P(-1)
 
 local codeast_format
-
-local iswhitespace = whitespace * P(-1)
-
-local fmt_ops
-local function dispatch(codeast, fmts, patt, i, j, res)
-	local v = patt[j]
-	if(type(v) == "table") then
-		return fmt_ops.rep(codeast, fmts, patt, i, j, res)
-	elseif(v == "%s") then
-		return fmt_ops.sym(codeast, fmts, patt, i, j, res)
-	elseif(iswhitespace:match(v)) then
-		return fmt_ops.whitespace(codeast, fmts, patt, i, j, res)
-	else
-		return fmt_ops.tok(codeast, fmts, patt, i, j, res)
-	end
-end
-
-local function iter(codeast, fmts, patt, i, j, res)
-	local k=1
-	--print("iter", codeast[i], i, j)
-	
-	while(i <= #codeast and j <= #patt) do
-		local done
-		i, j, done = dispatch(codeast, fmts, patt, i, j, res)
-		if(done) then
-			break
-		end
-		k=k+1
-		if(k > 10) then
-			error"kkk"
-		end
-	end
-	--print("end iter", i, j)
-	return i, j
-end
-
-fmt_ops = {
-	rep = function(codeast, fmts, patt, i, j, res)
-		--print"rep"
-		local v = patt[j]
-		v.count = 0
-		local bail = 0
-		if(v.n >= 0) then
-			local previ = i
-			while(true) do
-				i = iter(codeast, fmts, v, i, 1, res)
-				if(i == previ) then
-					break
-				end
-				--print("rep:", previ, i)
-				previ = i
-				bail = bail+1
-				if(bail > 10) then
-					error"bail"
-				end
-				v.count = v.count +1		
-			end
-		elseif(v.n < 0) then
-			local previ = i
-			for k=1, math.abs(v.n) do
-				i = iter(codeast, fmts, v[j], i, 1, res)
-				if(i == previ) then
-					break
-				end
-				bail = bail+1
-				if(bail > 10) then
-					error"bail"
-				end
-				v.count = v.count +1		
-			end
-		end
-		
-		--print("DONE REP", i, j, #codeast, codeast[2])
-		j = j+1
-		return i, j
-	end,
-	sym = function(codeast, fmts, patt, i, j, res)
-		
-		if(type(codeast[i]) == "table")
-			then res[#res+1] = codeast_format(codeast[i], fmts)
-			else res[#res+1] = codeast[i]
-		end
-		--print("sym", res[#res])
-		i = i+1
-		j = j+1
-		return i, j
-	end,
-	whitespace = function(codeast, fmts, patt, i, j, res)
-		--print"whitespace"
-		res[#res+1] = patt[j]
-		j = j+1
-		return i, j
-	end,
-	tok = function(codeast, fmts, patt, i, j, res)
-		local v = patt[j]
-		
-		--print("tok", codeast[i], v, v.n, patt.n)
-
-		local doassert = true
-		if(patt.n) then
-			if(patt.n == 0) then
-				doassert = false
-			elseif(patt.n > 0 and patt.count >= patt.n) then
-				doassert = false
-			end
-		end
-		
-		if(doassert) then
-			assert(codeast[i] == v)
-		elseif(codeast[i] ~= v) then
-			return i, j+1, true
-		end
-		res[#res+1] = v
-		i = i+1
-		j = j+1
-		return i, j
-	end,
-}
-
 local function synthesize(codeast, fmts)
 	local fmt = fmts[codeast.node.rule]
-	local patt = FMT:match(fmt)
-	--printt(patt)
-	local res = {}
-	local i, j = iter(codeast, fmts, patt, 1, 1, res)
-	while(j < #patt) do
-		local v = patt[j]
-		assert(iswhitespace:match(v))
-		res[#res+1] = v
-		j = j+1
-	end
-	return table.concat(res)
+	local ops = FMT:match(fmt)
+	
+	--print"****************************"
+	--print(fmt)
+	--printt(ops)
+
+	local wfmt = WFmt{
+		ops = ops,
+		wtem = WTem{ codeast=codeast },
+		cb = function(codeast)
+			return codeast_format(codeast, fmts)
+		end
+	}
+	return wfmt:write()
 end
 
 function codeast_format(codeast, fmts)
@@ -305,9 +225,6 @@ end
 
 function M:format(fmts)
 	fmts = fmts or {}
-	
-	fmts.array = "[%s_(, %s_)^0]"
-	
 	return codeast_format(self.codeast, fmts)
 end
 

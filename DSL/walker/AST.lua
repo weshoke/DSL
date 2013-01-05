@@ -53,6 +53,20 @@ function M:prev()
 	return self:current()
 end
 
+function M:prev_will_push()
+	local node = self:current()
+	if(node) then
+		if(node.rule) then
+			local idx = self.positions[node]
+			if(idx > 0) then
+				return true
+			end
+		end
+	else
+		return true
+	end
+end
+
 function M:next()
 	local node = self:current()
 	if(node) then
@@ -74,6 +88,22 @@ function M:next()
 	end
 	self:notify"next"
 	return self:current()
+end
+
+function M:next_will_pop(onlyrule)
+	local node = self:current()
+	if(node) then
+		if(node.rule) then
+			local idx = self.positions[node]
+			if(idx+1 > #node) then
+				return true
+			end
+		else
+			if(not onlyrule) then
+				return true
+			end
+		end
+	end
 end
 
 function M:rulename()

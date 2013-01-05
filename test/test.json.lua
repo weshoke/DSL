@@ -89,7 +89,6 @@ local dsl = DSL{
 		value = object + array + values
 		entry = STRING * T":" * Assert(value, "entry.value")
 		object = T"{" * (entry * (T"," * entry)^0)^-1  * Assert(T"}", "object.RIGHT_BRACE")
-		--object = T"{" * (entry * ( entry)^0)^-1  * Assert(T"}", "object.RIGHT_BRACE")
 		array = T"[" * (value * (T"," * value)^0)^-1 * Assert(T"]", "array.RIGHT_BRACKET")
 	]==],
 	annotations = {
@@ -116,10 +115,13 @@ local parser = dsl:parser{
 
 local code = [[
 {
-	"x" : [
-		123, "A"
-	],
-	"y" : "AAAAAAAAAAAA"
+	"SDFSDF" : {
+		"a" : 123.234
+	},
+	"XXXXXXX" : [1, 2, 3, 4]
+	,
+	
+	"a" : "v"
 }
 ]]
 
@@ -129,32 +131,27 @@ local function printnode(node, depth)
 	if(not node) then
 		print(string.rep("  ", depth).."<null>")
 	else
-		if(node.rule) then
-			print(string.rep("  ", depth)..format("Rule: %s %d", node.rule, #node))
-		else
-			print(string.rep("  ", depth)..format("Token: %s", node[1]))
+		if(node.rule) 
+			then print(string.rep("  ", depth)..format("Rule: %s %d", node.rule, #node))
+			else print(string.rep("  ", depth)..format("Token: %s", node[1]))
 		end
 	end
 end
 
+local fmts = {
+	array = "[%s(, %s)^0]",
+	entry = "%s: %s",
+	object = [[
+{(
+	%s(,
+	%s)^0
+)^-1}]]
+}
+
 print""
 if(ok and ast) then
-	printt(ast, "AST")
-	print( parser:print(ast) )
-	--[[
-	local wast = WalkerAST{ ast=ast }
-	wast:printloc()
-	for i=1, 11 do
-		wast:next()
-		wast:printloc()
-	end
-	print""
-	wast:printloc()
-	for i=1, 11 do
-		wast:prev()
-		wast:printloc()
-	end
-	--]]
+	--printt(ast, "AST")
+	print( parser:print(ast, fmts) )
 else
 	print(ast)
 	printt(parser.errors, "Errors")
