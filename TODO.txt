@@ -1,8 +1,2 @@
 TODO:
-	-- code formatting templates for re-synthesis of ASTs into code
-		-- %s -> arbitrary token
-		-- ^N -> repetition
-		-- whitespace
-		-- tokens
-		-- _( )_ for escapes
-		-- need to make DSL.walker.Template
+	-- AST -> AST translations?
