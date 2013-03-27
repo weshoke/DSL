@@ -263,5 +263,12 @@ which can produce results like:
 	name( arg1, arg2 )
 
 
+### Tips
+Since DSL tries not to make any assumptions about language structure, some seemingly standard language features aren't automatic.  For example, most languages use the syntax "( expression )" to demarcate a subexpression within a larger expression in order to express precedence.  To implement this syntax in DSL, a rule describing it has to be inserted into the chain of operators.  The terminal rule of an operator precedence chain is _values_ and the root rule is _expression_.  The parenthesis syntax could therefore be written as:
+
+	subexpression = T"(" * expression * T")" + values
+
+Inserting the subexpression rule as the first in the list of operators will ensure that it has the highest priority and has the canonical behavior.
+
 ### Limitations
 DSL uses proxies to manipulate LPEG.  Since Lua 5.1 doesn't support metamethods for the # operator on tables, the LPEG operator #patt, will not work in DSL.  Instead, use the function Ignore, which is functionally equivalent.
