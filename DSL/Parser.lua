@@ -218,8 +218,9 @@ function M:eval()
 	if(#values >= 1) then
 		special_rules = format("values = %s", table.concat(values, "+"))
 	end
-	if(#keywords >= 1) then
-		special_rules = (special_rules or "")..format("\nkeywords = %s", table.concat(keywords, "+"))
+	if(#keywords >= 1) 
+		then special_rules = (special_rules or "")..format("\nkeywords = %s", table.concat(keywords, "+"))
+		else special_rules = (special_rules or "").."\nkeywords = P(-1)"
 	end
 
 	if(special_rules) then
