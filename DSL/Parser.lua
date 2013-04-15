@@ -283,7 +283,9 @@ function M:eval()
 			end
 			self.rule_definitions[v.name] = v.patt
 			
-			if(v.collapsable) then
+			if(v.handler) then
+				patt = peg.Cmt(patt, v.handler)
+			elseif(v.collapsable) then
 				patt = peg.Cmt(patt, function(s, i, ...)
 					local n = select('#', ...)
 					if(n == 1) then

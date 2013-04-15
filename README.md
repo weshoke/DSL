@@ -73,8 +73,13 @@ In addition, there are certain fields that DSL looks for that, if defined, direc
 For rules, the fields are:
 
 * collapsable = Remove this Rule from the AST if it only has one child node
+* handler = A custom handler called when the rule is being matched
 
 The *collapsable* field is very useful for simplifying an AST.  For example, all auto-generated operator rules have their collapsable property set to true.  As a result, even though an operator rule might be matched, it will only appear in the AST if it carries any semantic information (i.e. it has more than one child node).  If it doesn't, then it is removed from the AST and its sole child is set as a child of the parent rule.
+
+The *handler* field is used to write custom node handlers that can't be expressed by other means.  *handler* must be a function of the form function(s, i, ...) where s is the subject being matched, i is the current index in the subject of the parser, and ... is the list of current captures.  The ... argument will be a list of tables representing either rule or token AST nodes.
+
+Special care must be taken when writing custom handers as DSL relies on AST nodes to be formatted in a particular way.  Every rule node in the ast must have a list of sub-nodes in its array portion and a field *rule* assigned the name of the grammar rule generating the node.  Arbitrary information can be stored in other fields of the node.  If a custom handler collapses its node under certain circumstances, the rule must also have its *collapsable* annotation set to true.  Otherwise, the code synthesis routines will not function properly and will likely throw errors.
 
 Aside from the annotations DSL understands, it may be useful to store data of some sort in a token or rule definition.  This is exactly what annotations are for.
 
