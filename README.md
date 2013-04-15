@@ -146,26 +146,26 @@ The output of a DSL parser is an Abstract Syntax Tree.  The nodes in the AST cor
 Token nodes have the token field set with the name of the token and the value of the token in the first position of the array portion of the node.  Tokens can only have one value, so they are always arrays of length one.  As an example output, below is some JSON code and its resulting AST:
 
 ```json
-	{
-		"x" : "yyy"
-	}
+{
+	"x" : "yyy"
+}
 ```
 
 ```lua
-	AST = {
-	    rule = "object",
-	    [1] = {
-	        rule = "entry",
-	        [1] = {
-	            token = "STRING",
-	            [1] = "\"x\"",
-	        },
-	        [2] = {
-	            token = "STRING",
-	            [1] = "\"yyy\"",
-	        },
-	    },
+AST = {
+	rule = "object",
+	[1] = {
+		rule = "entry",
+		[1] = {
+			token = "STRING",
+			[1] = "\"x\"",
+		},
+		[2] = {
+			token = "STRING",
+			[1] = "\"yyy\"",
+		},
 	},
+},
 ```
 	
 ### Code Synthesis
@@ -208,9 +208,9 @@ An example template set for the JSON parser above might look like:
 
 ```lua
 {
-		array = "[(%s(, %s)^0)^-1]",
-		entry = "%s: %s",
-		object = [[
+	array = "[(%s(, %s)^0)^-1]",
+	entry = "%s: %s",
+	object = [[
 	{(
 		%s(,
 		%s)^0
@@ -222,13 +222,13 @@ For each rule that has a formatter, the layout of each of its tokens is specifie
 
 Since DSL has no information about whitespace or where the anonymous tokens were in the token stream when synthesizing code from the AST, it makes use of the anonymous tokens to figure out which named element (token or rule) slots correspond with which fields in the AST node.  The formatter for entry is '%s: %s'.  It has two named elements corresponding to the STRING token and the value rule.  A JSON entry that looks like
 	
-```json
+```
 "list" : [1, 2, 3]
 ```
 	
 will be formatted as:
 
-```json
+```
 "list": [1, 2, 3]
 ```
 	
