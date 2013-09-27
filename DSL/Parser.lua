@@ -86,7 +86,7 @@ end
 
 -- Evaluate the Rule strings into LPEG patterns
 local rule_env = table_derive({
-	P=P, S=S, R=R, C=C, T=T, Token=T,
+	P=P, S=S, R=R, C=C, T=T, Token=T, Ignore=lpeg.Ignore
 }, patterns)
 function M:eval_rules(code)
 	local env_meta
@@ -219,7 +219,7 @@ function M:eval()
 		special_rules = format("values = %s", table.concat(values, "+"))
 	end
 	if(#keywords >= 1) 
-		then special_rules = (special_rules or "")..format("\nkeywords = %s", table.concat(keywords, "+"))
+		then special_rules = (special_rules or "")..format("\nkeywords = (%s)*Ignore(1-(idchar+digit))", table.concat(keywords, "+"))
 		else special_rules = (special_rules or "").."\nkeywords = P(-1)"
 	end
 

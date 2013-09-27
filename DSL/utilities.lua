@@ -195,9 +195,11 @@ local printt = (function()
 		local skip_key_set = skip_key_set or {}
 		local indent = "    "
 		
+		--[[
 		if t.__class then
 			print(string.format("%s-- __class = %s", string.rep(indent, lvl), tostring(t.__class)))
 		end
+		--]]
 		
 		-- sort keys:
 		local keys = {}
