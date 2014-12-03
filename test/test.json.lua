@@ -88,8 +88,8 @@ local dsl = DSL{
 	rules = [==[
 		value = object + array + values
 		entry = STRING * T":" * Assert(value, "entry.value")
-		object = T"{" * (entry * (T"," * entry)^0)^-1  * Assert(T"}", "object.RIGHT_BRACE")
-		array = T"[" * (value * (T"," * value)^0)^-1 * Assert(T"]", "array.RIGHT_BRACKET")
+		object = T"{" * (entry * (T"," * entry)^0)^-1  * MarkFail(T"}", "object.RIGHT_BRACE")
+		array = T"[" * (value * (T"," * value)^0)^-1 * MarkFail(T"]", "array.RIGHT_BRACKET")
 	]==],
 	annotations = {
 		-- value tokens
@@ -111,14 +111,15 @@ local parser = dsl:parser{
 	--anonymous_token_trace = true,
 	token_event = utils.token_event,
 	rule_event = utils.rule_event,
+	mark_event = function(self, e, s, i, ...)
+		local line, col = utils.linecol(s, i)
+		print(e, i, line..":"..col, ...)
+	end,
 }
 
 local code = [[
 {
-	"list" : [1, 2, 3],
-	"vec3" : {
-		"x": 1, "y": 0, "z": 0.5
-	}
+	"test" : 
 }
 ]]
 

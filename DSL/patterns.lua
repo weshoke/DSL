@@ -1,5 +1,5 @@
 --[[
--- DSl.patterns
+-- DSL.patterns
 A collection of convenient LPEG patterns and pattern generating functions useful when writing DSLs.
 --]]
 

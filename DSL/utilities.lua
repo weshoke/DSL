@@ -95,7 +95,7 @@ local function linecol(s, i, trim)
 		col = i-loc
 		line = line+1
 	end
-	
+
 	local nonspace = P(1)-space
 	local newline = P"\n"
 	local patt = ((newline*Cp())/count + nonspace + space)^1

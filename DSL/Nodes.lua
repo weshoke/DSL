@@ -1,5 +1,5 @@
 --[[
--- DSl.Nodes
+-- DSL.Nodes
 Simple representation of AST node types: Token and Rule.  These structures have no functionality and are simply 
 here as convenient holders of information.
 --]]

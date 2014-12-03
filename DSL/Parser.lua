@@ -1,5 +1,5 @@
 --[[
--- DSl.Parser
+-- DSL.Parser
 The workhorse object of DSL.  The Parser generates a parser from LPEG based on the definitions given to its 
 parent DSL object.  Parser will annotate the basic patterns provided with extra structure according to the options 
 provided to the DSL object, which can be used to generate events during parsing and add extra information to the 
@@ -91,6 +91,9 @@ local rule_env = table_derive({
 function M:eval_rules(code)
 	local env_meta
 	env_meta = {
+		MarkFail = function(...)
+			return self:mark_fail(...)
+		end,
 		Assert = function(...)
 			return self:err(...)
 		end,
@@ -117,6 +120,16 @@ function M:eval_comments(code)
 	local env = setmetatable({}, comment_env)
 	setfenv(loadstring(code), env)()
 	return env
+end
+
+function M:mark_fail(patt, ...)
+	local args = {...}
+	return patt + function(s, i)
+		if(self.mark_event) then
+			self:mark_event("fail", s, i, unpack(args))
+		end
+		return false
+	end
 end
 
 function M:err(patt, ctx)
