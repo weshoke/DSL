@@ -42,6 +42,7 @@ local table_format = utils.table_format
 local keys = utils.keys
 local optbool = utils.optbool
 local linecol = utils.linecol
+local printt = utils.printt
 
 
 local M = {}
@@ -86,11 +87,15 @@ end
 
 -- Evaluate the Rule strings into LPEG patterns
 local rule_env = table_derive({
-	P=P, S=S, R=R, C=C, T=T, Token=T, Ignore=lpeg.Ignore
+	P=P, S=S, R=R, C=C, Cc=Cc, Cg=Cg, Cmt=Cmt, T=T, Token=T, Ignore=lpeg.Ignore,
+	print=print, printt=printt, type=type
 }, patterns)
 function M:eval_rules(code)
 	local env_meta
 	env_meta = {
+		G = function(name)
+			return self.grammars[name]
+		end,
 		MarkFail = function(...)
 			return self:mark_fail(...)
 		end,
@@ -158,7 +163,7 @@ function M:create_comments(code)
 	end
 end
 
-function M:create_grammar(ignore)
+function M:create_grammar(root, ignore)
 	local grammar = {}
 	for name, rule in pairs(self.rules) do
 		assert(name == rule.name)
@@ -167,8 +172,12 @@ function M:create_grammar(ignore)
 	for name, tok in pairs(self.tokens) do
 		grammar[tok.name] = tok.patt
 	end
-	grammar[1] = self.root
-	self.patt = ignore * peg.P(grammar) * ignore * peg.P(-1)
+	grammar[1] = root
+	if(ignore) then
+		return ignore * peg.P(grammar) * ignore * peg.P(-1)
+	else
+		return peg.P(grammar)*peg.Cp()
+	end
 end
 
 function M:eval()
@@ -229,7 +238,81 @@ function M:eval()
 	
 	local special_rules
 	if(#values >= 1) then
+		self.dsl.annotations.__values = {collapsable=true}
+		--[[
+		op_lookahead = Cmt(Ignore(values * T"+"), function(s, i, t)
+			print">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+			print("MATCHED LOOKAHEAD +", i, "->"..s:sub(i))
+			printt(G"+":match(s:sub(i)))
+			print"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+			return nil
+		end)
+		--]]
+		--special_rules = format("values = %s", table.concat(values, "+"))
+		
 		special_rules = format("values = %s", table.concat(values, "+"))
+		---[==[
+		
+		local priority_strings = {}
+		for k, v in pairs(self.dsl.op_priority) do
+			priority_strings[#priority_strings+1] = string.format("%s = %d", k, v)
+		end
+		local priority_table = string.format([[local __priority = {
+			%s
+		}
+		local function __get_priority(name)
+			return __priority[name]
+		end
+		]], table.concat(priority_strings, ",\n"))
+		
+		special_rules = format("%s\n%s\n%s", special_rules, priority_table, [=[
+			__values = (Cmt(unops * opsyms, function(s, i, value, opsym)
+				local ast, pos = G"__values":match(s, i)
+				--printt(opsym)
+				--[[
+				print">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+				print("MATCHED LOOKAHEAD +", i, "->"..s:sub(i))
+				printt(value, "value")
+				print("opsym:", opsym)
+				printt(opsym, "opsym")
+				print(ast, "ast")
+				print("ADVANCE:", pos, pos-i)
+				print"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+				--]]
+				
+				local priority1 = __get_priority(opsym.name)
+				local priority2 = __get_priority(ast.rule)
+				if(priority2 and priority1 < priority2) then
+					local value2 = ast[1]
+					local res = {
+						rule = opsym.name,
+						[1] = value,
+						--[2] = opsym[1],
+						--[3] = value2,
+					}
+					
+					for i=1, #opsym do
+						res[#res+1] = opsym[i]
+					end
+					res[#res+1] = value2
+					ast[1] = res
+					return pos, ast
+				else
+					local res = {
+						rule = opsym.name,
+						[1] = value,
+						--[2] = opsym[1],
+						--[3] = ast,
+					}
+					for i=1, #opsym do
+						res[#res+1] = opsym[i]
+					end
+					res[#res+1] = ast
+				
+					return pos, res
+				end
+			end) + unops)
+		]=])
 	end
 	if(#keywords >= 1) 
 		then special_rules = (special_rules or "")..format("\nkeywords = (%s)*Ignore(1-(idchar+digit))", table.concat(keywords, "+"))
@@ -348,7 +431,10 @@ function M:eval()
 		self.rules[k] = v:eval(handlers)
 	end
 
-	self:create_grammar(ignore)
+	self.patt = self:create_grammar(self.root, ignore)
+	
+	self.grammars = {}
+	self.grammars.__values = self:create_grammar("__values")
 end
 
 ---------------------------
