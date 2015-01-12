@@ -231,9 +231,19 @@ function M:eval()
 	if(#values >= 1) then
 		special_rules = format("values = %s", table.concat(values, "+"))
 	end
-	if(#keywords >= 1) 
-		then special_rules = (special_rules or "")..format("\nkeywords = (%s)*Ignore(1-(idchar+digit))", table.concat(keywords, "+"))
-		else special_rules = (special_rules or "").."\nkeywords = P(-1)"
+	if(#keywords >= 1) then
+		--special_rules = (special_rules or "")..format("\nkeywords = (%s)*Ignore(1-(idchar+digit))", table.concat(keywords, "+"))
+		local keyword_special_rule = self.tokens[keywords[1]].patt
+		for i=2, #keywords do
+			keyword_special_rule = keyword_special_rule + self.tokens[keywords[i]].patt
+		end
+		keyword_special_rule = keyword_special_rule * #(1-(patterns.idchar + patterns.digit))
+		self.rules.keywords = Rule{
+			name = "keywords",
+			patt = keyword_special_rule
+		}
+	else
+		special_rules = (special_rules or "").."\nkeywords = P(-1)"
 	end
 
 	if(special_rules) then
@@ -290,7 +300,12 @@ function M:eval()
 		end,
 	
 		Rule = function(v)
-			local patt = v.patt:eval(handlers)
+			local patt
+			if(type(v.patt) == "table") then
+				patt = v.patt:eval(handlers)
+			else
+				patt = v.patt
+			end
 			if(self.dsl.annotations[v.name]) then
 				table_derive(v, self.dsl.annotations[v.name])
 			end
